@@ -1,0 +1,99 @@
+on early-init
+    mkdir /mnt/vendor/persist/
+    chown root system /mnt/vendor/persist
+    chmod 0771 /mnt/vendor/persist
+    symlink /mnt/vendor/persist /persist
+
+on init
+    #create mountpoint for /mnt/vendor/persist partition
+    mkdir /mnt/vendor/persist 0771 system system
+
+    symlink /mnt/vendor/persist /vendor/persist
+
+on post-fs
+    chown system system /mnt/vendor/persist
+    chmod 0771 /mnt/vendor/persist
+
+    # We restorecon /mnt/vendor/persist to set SEPolicy label.
+    restorecon /mnt/vendor/persist
+
+    # Create mcRegistry to store failure record
+    mkdir /mnt/vendor/persist/mcRegistry 0771 system system
+
+    write /proc/bootprof "MOBICORE: Starting mcDriverDaemon"
+    start mobicore
+
+on post-fs-data
+    # Create /data/vendor/key_provisioning dir and get proper encryption policy installed
+    # Key Installation
+    mkdir /data/vendor/key_provisioning 0771 system system
+
+# just boot in fastboot mode, fastbootd service need vendor.boot-hal-1-0 & health-hal-2-0
+on property:recovery.fastboot_mode=1
+    start vendor.boot-hal-1-0
+    start health-hal-2-0
+
+on property:recovery.service=1
+    start keymaster-4-0
+    start gatekeeper-1-0
+    #wait_for_prop hwservicemanager.ready true
+    exec_start wait_for_keymaster
+    start guardianangle
+
+service wait_for_keymaster  /system/bin/wait_for_keymaster
+    disabled
+    user root
+    seclabel u:r:recovery:s0
+
+service keymaster-3-0 /vendor/bin/android.hardware.keymaster@3.0-service
+    disabled
+    user root
+    group root drmrpc
+    seclabel u:r:recovery:s0
+
+service keymaster-4-0 /vendor/bin/android.hardware.keymaster@4.0_tee-service
+    disabled
+    user root
+    group root drmrpc
+    seclabel u:r:recovery:s0
+
+service gatekeeper-1-0 /vendor/bin/android.hardware.gatekeeper@1.0-service
+    disabled
+    user root
+    group root
+    seclabel u:r:recovery:s0
+
+service keystore_auth /system/bin/keystore_auth
+    disabled
+    user system
+    group root system
+    seclabel u:r:recovery:s0
+
+service keystore /system/bin/keystore /data/misc/keystore
+    disabled
+    user keystore
+    group keystore drmrpc readproc log
+    writepid /dev/cpuset/foreground/tasks
+    seclabel u:r:recovery:s0
+
+service guardianangle  /system/bin/guardianangle
+    disabled
+    user root
+    seclabel u:r:recovery:s0
+
+service vendor.boot-hal-1-0 /vendor/bin/hw/android.hardware.boot@1.0-service
+    disabled
+    user root
+    group root
+    seclabel u:r:recovery:s0
+
+service health-hal-2-0 /vendor/bin/hw/android.hardware.health@2.0-service
+    disabled
+    user root
+    group root
+    seclabel u:r:recovery:s0
+
+# Start Daemon (Registry directories should already be present)
+service mobicore /vendor/bin/mcDriverDaemon -r FFFFFFFF000000000000000000000001 -r /vendor/app/mcRegistry/FFFFFFFFD00000000000000000000016.tlbin  -r /vendor/app/mcRegistry/07020000000000000000000000000000.tlbin -r /vendor/app/mcRegistry/05070000000000000000000000000000.drbin
+    disabled
+    seclabel u:r:recovery:s0

@@ -1,0 +1,32 @@
+on init
+    export ANDROID_DNS_MODE local
+
+    mkdir /system/etc
+    mkdir /data/misc
+    mkdir /data/misc/wifi
+    mkdir /data/misc/wifi 0777
+    mkdir /data/misc/wifi/sockets 0777
+    mkdir /data/misc/wifi/wpa_supplicant 0777
+
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+    chown dhcp dhcp /data/misc/dhcp
+
+    symlink /system/etc/firmware /etc/firmware
+    #symlink /system/bin /system/etc/wifi
+    symlink /vendor /system/vendor
+    symlink /system/bin/toybox /system/bin/insmod
+
+service wpa_supplicant /system/bin/wpa_supplicant -Dnl80211 -iwlan0 -dd -O/data/vendor/wifi/wpa/sockets -c/cache/recovery/wpa_supplicant.conf
+    disabled
+    seclabel u:r:hal_wifi_supplicant_default:s0
+
+service dhcpcd /system/bin/dhcpcd wlan0
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
+
+on property:supplicant.status=running
+    start wpa_supplicant
+
+on property:supplicant.status=stopped
+    stop wpa_supplicant
