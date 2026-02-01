@@ -6,9 +6,13 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_erdv9630.mk
+    $(LOCAL_DIR)/omni_erdv9630.mk \
+    $(LOCAL_DIR)/twrp_erdv9630.mk
 
 COMMON_LUNCH_CHOICES := \
     omni_erdv9630-user \
     omni_erdv9630-userdebug \
-    omni_erdv9630-eng
+    omni_erdv9630-eng \
+    twrp_erdv9630-user \
+    twrp_erdv9630-userdebug \
+    twrp_erdv9630-eng
