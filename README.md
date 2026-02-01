@@ -10,7 +10,7 @@
 ## 仓库地址
 
 - 设备树仓库：https://github.com/MengWanYu/android_device_tree_vivoy70s
-- 工作流仓库：https://github.com/MengWanYu/Action-TWRP-Builder
+- 工作流仓库：https://github.com/MengWanYu/android_device_tree_vivoy70s
 - GitHub Token: (请使用环境变量配置，不要在文档中硬编码)
 
 ## 已完成的工作
@@ -54,13 +54,6 @@ Error: Exception in thread "main" java.io.IOException: Can not find the font fil
 3. ✅ 创建了多个字体文件名变体（Roboto-Regular-en.ttf, roboto-regular.ttf等）
 4. ✅ 修改了TWRP源码中的文本图片生成规则（sed注释）
 5. ✅ 设置了环境变量
-
-## 当前工作流状态
-
-**最新运行：** 工作流 #24  
-**运行ID：** 21564404469  
-**状态：** 进行中  
-**查看链接：** https://github.com/MengWanYu/Action-TWRP-Builder/actions/runs/21564404469
 
 ## 下一步操作指南
 
