@@ -1,0 +1,335 @@
+name: Recovery 编译
+on:
+  workflow_dispatch:
+    inputs:
+      MANIFEST_URL:
+        description: 'Manifest仓库地址（若使用SSH密钥，格式为git@github.com:XXXXX）'
+        required: true
+        default: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni'
+      MANIFEST_BRANCH:
+        description: 'Manifest分支'
+        required: true
+        default: 'twrp-10.0-deprecated'
+      DEVICE_TREE_URL:
+        description: '设备树仓库地址'
+        required: true
+        default: 'https://github.com/MengWanYu/android_device_tree_vivoy70s'
+      DEVICE_TREE_BRANCH:
+        description: '设备树分支'
+        required: true
+        default: 'main'
+      DEVICE_PATH:
+        description: '设备树在源码中的路径'
+        required: true
+        default: 'device/vivo/erdv9630'
+      COMMON_TREE_URL:
+        description: '通用设备树地址（无则留空）'
+        required: false
+      COMMON_PATH:
+        description: '通用设备树在源码中的路径（无则留空）'
+        required: false
+      DEVICE_NAME:
+        description: '设备名称'
+        required: true
+        default: 'vivo'
+      MAKEFILE_NAME:
+        description: 'Makefile名称（不含.mk后缀）'
+        required: true
+        default: 'omni_erdv9630'
+      BUILD_TARGET:
+        description: '编译目标（如recovery）'
+        required: true
+        default: 'recovery'
+
+jobs:
+  build:
+    if: github.event.repository.owner.id == github.event.sender.id
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: 显示运行参数
+        run: |
+          echo "::group::用户环境变量"
+          echo "Manifest地址: ${{ github.event.inputs.MANIFEST_URL }}"
+          echo "Manifest分支: ${{ github.event.inputs.MANIFEST_BRANCH }}"
+          echo "设备树地址: ${{ github.event.inputs.DEVICE_TREE_URL }}"
+          echo "设备树分支: ${{ github.event.inputs.DEVICE_TREE_BRANCH }}"
+          echo "设备树路径: ${{ github.event.inputs.DEVICE_PATH }}"
+          echo "设备名称: ${{ github.event.inputs.DEVICE_NAME }}"
+          echo "Makefile名称: ${{ github.event.inputs.MAKEFILE_NAME }}"
+          echo "编译目标: ${{ github.event.inputs.BUILD_TARGET }}.img"
+          echo "::endgroup::"
+
+      - name: 安装OpenJDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: 配置SSH密钥（如需）
+        if: ${{ startsWith(github.event.inputs.MANIFEST_URL, 'git@github.com') || startsWith(github.event.inputs.DEVICE_TREE_URL, 'git@github.com') || startsWith(github.event.inputs.COMMON_TREE_URL, 'git@github.com') }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 安装repo工具
+        run: |
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
+
+      - name: 初始化repo（同步源码）
+        run: |
+          mkdir workspace
+          cd workspace
+          echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
+          git config --global user.name "Nico170420"
+          git config --global user.email "b170420nc@gmail.com"
+          repo init --depth=1 -u ${{ github.event.inputs.MANIFEST_URL }} -b ${{ github.event.inputs.MANIFEST_BRANCH }}
+        id: pwd
+
+      - name: 同步源码（repo sync）
+        run: |
+          repo sync -j$(nproc --all) --force-sync
+        working-directory: workspace
+
+      - name: 克隆设备树
+        run: |
+          git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 克隆通用设备树（如需）
+        if: |
+          github.event.inputs.COMMON_TREE_URL != '' && github.event.inputs.COMMON_PATH != ''
+        run: |
+          git clone ${{ github.event.inputs.COMMON_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.COMMON_PATH }}
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 检查构建树类型
+        uses: haya14busa/action-cond@v1
+        id: buildtree
+        with:
+          cond: ${{ github.event.inputs.MANIFEST_BRANCH == 'twrp-11' || github.event.inputs.MANIFEST_BRANCH == 'twrp-12.1' }}
+          if_true: twrp
+          if_false: omni
+
+      - name: 同步设备依赖
+        run: |
+          DEPS_FILE="${{ github.event.inputs.DEVICE_PATH }}/${{ steps.buildtree.outputs.value }}.dependencies"
+          SCRIPT_PATH="${GITHUB_WORKSPACE}/scripts/convert.sh"
+          echo "=== 调试信息 ==="
+          echo "工作目录: $(pwd)"
+          echo "脚本路径: $SCRIPT_PATH"
+          echo "依赖文件: $DEPS_FILE"
+          echo "构建树类型: ${{ steps.buildtree.outputs.value }}"
+          echo "依赖文件是否存在: [ -f ${DEPS_FILE} ] && echo '存在' || echo '不存在'"
+          echo "================"
+          if [ -f "$DEPS_FILE" ]; then
+            bash "$SCRIPT_PATH" "$DEPS_FILE"
+          else
+            echo "⚠️  依赖文件不存在，跳过转换: $DEPS_FILE"
+          fi
+          repo sync -j$(nproc --all)
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        continue-on-error: true
+
+      - name: 准备字体文件（修复 TWRP 字体缺失问题）
+        run: |
+          # 创建多个编译系统可能查找的字体目录
+          FONT_DIRS=(
+            "${{ steps.pwd.outputs.workspace-folder }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/PACKAGING/recovery_font_files_intermediates"
+            "${{ steps.pwd.outputs.workspace-folder }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/ETC/recovery_font_files_intermediates"
+            "${{ steps.pwd.outputs.workspace-folder }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/system/fonts"
+            "${{ steps.pwd.outputs.workspace-folder }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery/root/fonts"
+          )
+          
+          for font_dir in "${FONT_DIRS[@]}"; do
+            mkdir -p "$font_dir"
+            echo "✅ 创建目录: $font_dir"
+          done
+          
+          # 从设备树复制字体文件
+          DEVICE_FONT_DIR="${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/recovery/root/fonts"
+          if [ -f "$DEVICE_FONT_DIR/Roboto-Regular.ttf" ]; then
+            file_type=$(file -b "$DEVICE_FONT_DIR/Roboto-Regular.ttf")
+            echo "✅ 找到设备树字体: $file_type"
+            
+            # 复制到所有可能的字体目录
+            for font_dir in "${FONT_DIRS[@]}"; do
+              cp "$DEVICE_FONT_DIR/Roboto-Regular.ttf" "$font_dir/"
+              echo "✅ 复制到: $font_dir"
+            done
+            
+            # 创建额外的符号链接和副本
+            PRIMARY_FONT_DIR="${{ steps.pwd.outputs.workspace-folder }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/PACKAGING/recovery_font_files_intermediates"
+            cd "$PRIMARY_FONT_DIR"
+            
+            # 创建多个可能的字体文件名
+            cp Roboto-Regular.ttf Roboto-Regular-en.ttf
+            cp Roboto-Regular.ttf roboto-regular.ttf
+            cp Roboto-Regular.ttf Roboto_Regular.ttf
+            cp Roboto-Regular.ttf roboto_regular.ttf
+            
+            # 创建语言特定的字体文件
+            cp Roboto-Regular.ttf Roboto-Regular_zh_CN.ttf
+            cp Roboto-Regular.ttf Roboto-Regular_zh_TW.ttf
+            
+            echo "✅ 字体文件准备完成"
+            echo "📋 主要字体目录内容:"
+            ls -lh "$PRIMARY_FONT_DIR"
+          else
+            echo "❌ 错误: 设备树中没有找到Roboto-Regular.ttf"
+            exit 1
+          fi
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 禁用文本图片生成（绕过字体依赖）
+        run: |
+          # 修改TWRP编译配置，禁用文本图片生成
+          RECOVERY_MAKEFILE="${{ steps.pwd.outputs.workspace-folder }}/bootable/recovery/gui/Android.mk"
+          
+          if [ -f "$RECOVERY_MAKEFILE" ]; then
+            echo "✅ 找到 recovery/gui/Android.mk"
+            
+            # 查找并注释掉文本图片生成的规则
+            if grep -q "recovery_text_res" "$RECOVERY_MAKEFILE"; then
+              echo "✅ 找到文本图片生成规则，禁用中..."
+              
+              # 创建备份
+              cp "$RECOVERY_MAKEFILE" "$RECOVERY_MAKEFILE.backup"
+              
+              # 注释掉文本图片生成的规则
+              sed -i '/recovery_text_res_intermediates/s/^/# DISABLED: /' "$RECOVERY_MAKEFILE"
+              sed -i '/RecoveryImageGenerator.jar/s/^/# DISABLED: /' "$RECOVERY_MAKEFILE"
+              sed -i '/wipe_data/s/^/# DISABLED: /' "$RECOVERY_MAKEFILE"
+              
+              echo "✅ 已禁用文本图片生成规则"
+            else
+              echo "⚠️  未找到文本图片生成规则"
+            fi
+          else
+            echo "⚠️  未找到 $RECOVERY_MAKEFILE"
+          fi
+          
+          # 尝试通过环境变量禁用
+          echo "export RECOVERY_SKIP_TEXT_IMAGE_GENERATION=true" >> ~/.bashrc
+          echo "export TW_SKIP_TEXT_IMAGE_GENERATION=true" >> ~/.bashrc
+          
+          echo "✅ 禁用文本图片生成配置完成"
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 配置 BoardConfig.mk 字体路径（根治方案）
+        run: |
+          # 设备树路径
+          DEVICE_PATH="${{ github.event.inputs.DEVICE_PATH }}"
+          
+          # 查找 BoardConfig.mk 文件
+          BOARDCONFIG_FILE="${{ steps.pwd.outputs.workspace-folder }}/${DEVICE_PATH}/BoardConfig.mk"
+          
+          if [ -f "$BOARDCONFIG_FILE" ]; then
+            echo "✅ 找到 BoardConfig.mk: $BOARDCONFIG_FILE"
+            
+            # 确保有禁用文本图片生成的配置
+            if ! grep -q "RECOVERY_SKIP_TEXT_IMAGE_GENERATION" "$BOARDCONFIG_FILE"; then
+              echo "✅ 添加 RECOVERY_SKIP_TEXT_IMAGE_GENERATION 配置"
+              echo "" >> "$BOARDCONFIG_FILE"
+              echo "# 禁用recovery界面文本图片生成，避免字体依赖" >> "$BOARDCONFIG_FILE"
+              echo "RECOVERY_SKIP_TEXT_IMAGE_GENERATION := true" >> "$BOARDCONFIG_FILE"
+            else
+              echo "✅ 已存在 RECOVERY_SKIP_TEXT_IMAGE_GENERATION 配置"
+            fi
+          else
+            echo "⚠️  未找到 BoardConfig.mk 文件"
+          fi
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      # 修复核心：将环境准备步骤移到「源码同步+设备树克隆之后」，避免路径不存在报错
+      - name: 准备编译环境（安装依赖+配置zopflipng）
+        run: |
+          # 1. 清理之前可能残留的zopflipng文件，避免冲突
+          sudo rm -rf zopfli /usr/bin/zopflipng
+
+          # 2. 安装基础编译依赖（git、cmake、编译器等）
+          sudo apt update && sudo apt install -y git build-essential cmake libpng-dev
+
+          # 3. 编译安装zopflipng（图片压缩工具，TWRP编译必需）
+          git clone https://github.com/google/zopfli.git --depth 1  # 浅克隆加速
+          cd zopfli/build 2>/dev/null || mkdir -p zopfli/build && cd zopfli/build  # 确保进入build目录
+          cmake .. -DCMAKE_BUILD_TYPE=Release  # 配置编译参数（Release模式优化性能）
+          make -j$(nproc --all)  # 多线程编译
+
+          # 4. 复制工具到系统目录，并验证可用性
+          if [ -f "./zopflipng" ]; then
+            sudo cp ./zopflipng /usr/bin/
+            echo "✅ zopflipng工具复制成功！"
+            # 验证工具是否可执行（部分版本无--version，用--help判断）
+            if zopflipng --help >/dev/null 2>&1; then
+              echo "✅ zopflipng工具可正常运行！"
+            else
+              echo "✅ zopflipng工具安装成功（无--version参数，不影响编译使用）"
+            fi
+          else
+            echo "❌ 编译失败：未找到zopflipng可执行文件"
+            ls -l ./  # 列出目录内容，方便排查问题
+            exit 1
+          fi
+          cd ../../  # 回到工作目录
+
+          # 5. 安装其他编译依赖（安卓构建、内核编译相关）
+          DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
+            linux-modules-extra-$(uname -r) \
+            gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
+            libc6-dev lib32ncurses-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils \
+            xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libsdl1.2-dev \
+            build-essential libgtk-3-dev libglu1-mesa-dev freeglut3-dev git libxml2 lzop pngcrush schedtool squashfs-tools \
+            imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libncurses6 python3 tar
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 设置交换空间（避免编译内存不足）
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 12
+
+      - name: 编译Recovery
+        run: |
+          source build/envsetup.sh  # 初始化构建环境
+          export ALLOW_MISSING_DEPENDENCIES=true  # 允许缺失非关键依赖（适配自定义设备树）
+          lunch ${{ github.event.inputs.MAKEFILE_NAME }}-eng  # 选择编译目标
+          make clean  # 清理旧编译产物
+          
+          # 关键：给构建系统创建zopflipng软链接（ninja仅识别out目录下的工具）
+          LINK_PATH="${{ steps.pwd.outputs.workspace-folder }}/out/host/linux-x86/bin/zopflipng"
+          LINK_DIR="$(dirname $LINK_PATH)"
+          
+          # 创建目标目录（如果不存在）
+          if [ ! -d "$LINK_DIR" ]; then
+            mkdir -p "$LINK_DIR"
+            echo "✅ 已创建目录：$LINK_DIR"
+          fi
+          
+          # 创建软链接
+          sudo ln -sf /usr/bin/zopflipng $LINK_PATH
+          echo "✅ 已创建zopflipng软链接：$LINK_PATH"
+          
+          make ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)  # 开始编译
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 上传编译产物到Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            workspace/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/${{ github.event.inputs.BUILD_TARGET }}.img
+            workspace/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.zip
+            workspace/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*vendor*.img
+          name: ${{ github.event.inputs.DEVICE_NAME }}-${{ github.run_id }}
+          tag_name: ${{ github.run_id }}
+          body: |
+            🔧 编译信息：
+            - Manifest分支: ${{ github.event.inputs.MANIFEST_BRANCH }}
+            - 设备名称: ${{ github.event.inputs.DEVICE_NAME }}
+            - 编译目标: ${{ github.event.inputs.BUILD_TARGET }}.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
