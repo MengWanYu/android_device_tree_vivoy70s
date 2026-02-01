@@ -82,8 +82,8 @@ Error: Exception in thread "main" java.io.IOException: Can not find the font fil
 ### 工作流配置参数
 
 ```yaml
-MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni
-MANIFEST_BRANCH: twrp-9.0
+MANIFEST_URL: https://github.com/MengWanYu/platform_manifest_twrp_aosp
+MANIFEST_BRANCH: twrp-11
 DEVICE_TREE_URL: https://github.com/MengWanYu/android_device_tree_vivoy70s
 DEVICE_TREE_BRANCH: main
 DEVICE_PATH: device/vivo/erdv9630
@@ -103,7 +103,7 @@ curl -X POST \
   -d '{
     "ref":"main",
     "inputs":{
-      "MANIFEST_URL":"https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni",
+      "MANIFEST_URL":"https://github.com/MengWanYu/platform_manifest_twrp_aosp",
       "MANIFEST_BRANCH":"twrp-10.0-deprecated",
       "DEVICE_TREE_URL":"https://github.com/MengWanYu/android_device_tree_vivoy70s",
       "DEVICE_TREE_BRANCH":"main",
