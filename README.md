@@ -1,10 +1,185 @@
-# Android device tree for vivo vivo (erdv9630)
+# TWRP 编译项目 - AI 记忆与状态文档
 
+## 项目信息
+
+**设备：** vivo Y70s (vivoy70s/erdv9630)  
+**处理器：** 猎户座880 (Exynos 880)  
+**Android版本：** Android 10  
+**目标：** 编译TWRP Recovery镜像
+
+## 仓库地址
+
+- 设备树仓库：https://github.com/MengWanYu/android_device_tree_vivoy70s
+- 工作流仓库：https://github.com/MengWanYu/Action-TWRP-Builder
+- GitHub Token: (请使用环境变量配置，不要在文档中硬编码)
+
+## 已完成的工作
+
+### 1. 设备树配置
+- ✅ BoardConfig.mk 已配置完成
+- ✅ 添加了字体路径配置：`RECOVERY_FONT_PATH := $(DEVICE_PATH)/recovery/root/fonts/Roboto-Regular.ttf`
+- ✅ 添加了禁用文本图片生成配置：`RECOVERY_SKIP_TEXT_IMAGE_GENERATION := true`
+- ✅ 字体文件已更新为真正的TrueType字体（374KB）
+
+### 2. 工作流优化
+- ✅ 改进了字体准备逻辑，支持多目录放置
+- ✅ 添加了字体类型验证
+- ✅ 添加了禁用文本图片生成规则的步骤
+- ✅ 配置了zopflipng工具
+- ✅ 设置了12GB交换空间
+
+### 3. 已提交的重要版本
+- 设备树：commit 3eab227 - 更新为真正的Roboto-Regular.ttf字体文件
+- 工作流：commit b3e882e - 大幅改进字体准备：多目录放置+禁用文本图片生成规则
+
+## 当前问题
+
+### 核心错误
 ```
-#
-# Copyright (C) 2026 The Android Open Source Project
-# Copyright (C) 2026 SebaUbuntu's TWRP device tree generator
-#
-# SPDX-License-Identifier: Apache-2.0
-#
+Error: Exception in thread "main" java.io.IOException: Can not find the font file Roboto-Regular for language en
 ```
+
+### 问题分析
+1. TWRP编译系统在生成文本图片时，无法找到Roboto-Regular字体
+2. 虽然字体文件已正确放置在多个目录，但编译系统仍然报错
+3. `RECOVERY_SKIP_TEXT_IMAGE_GENERATION := true` 配置未生效
+
+### 已尝试的解决方案
+1. ✅ 添加了真实的TTF字体文件（374KB）
+2. ✅ 在多个目录放置字体文件：
+   - `out/target/product/vivo/obj/PACKAGING/recovery_font_files_intermediates`
+   - `out/target/product/vivo/obj/ETC/recovery_font_files_intermediates`
+   - `out/target/product/vivo/system/fonts`
+   - `out/target/product/vivo/recovery/root/fonts`
+3. ✅ 创建了多个字体文件名变体（Roboto-Regular-en.ttf, roboto-regular.ttf等）
+4. ✅ 修改了TWRP源码中的文本图片生成规则（sed注释）
+5. ✅ 设置了环境变量
+
+## 当前工作流状态
+
+**最新运行：** 工作流 #24  
+**运行ID：** 21564404469  
+**状态：** 进行中  
+**查看链接：** https://github.com/MengWanYu/Action-TWRP-Builder/actions/runs/21564404469
+
+## 下一步操作指南
+
+### 立即行动项
+
+1. **检查工作流#24结果**
+   - 访问：https://github.com/MengWanYu/Action-TWRP-Builder/actions/runs/21564404469
+   - 如果成功：提取recovery.img
+   - 如果失败：查看日志，分析错误
+
+2. **如果仍然失败，尝试以下方案：**
+
+   **方案A：完全禁用文本图片生成**
+   - 修改 `bootable/recovery/gui/Android.mk`
+   - 删除或注释掉所有 `recovery_text_res` 相关的规则
+   - 或者修改 `RecoveryImageGenerator.jar` 的调用
+
+   **方案B：使用系统字体**
+   - 将系统字体复制到所有可能的字体目录
+   - 修改 `BoardConfig.mk`，使用系统字体路径
+
+   **方案C：修改Manifest使用更新的TWRP版本**
+   - 尝试使用 twrp-11 分支
+   - 或者使用其他TWRP源码
+
+### 工作流配置参数
+
+```yaml
+MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni
+MANIFEST_BRANCH: twrp-10.0-deprecated
+DEVICE_TREE_URL: https://github.com/MengWanYu/android_device_tree_vivoy70s
+DEVICE_TREE_BRANCH: main
+DEVICE_PATH: device/vivo/erdv9630
+DEVICE_NAME: vivo
+MAKEFILE_NAME: omni_erdv9630
+BUILD_TARGET: recovery
+```
+
+### 触发工作流命令
+
+```bash
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/MengWanYu/Action-TWRP-Builder/actions/workflows/229163364/dispatches \
+  -d '{
+    "ref":"main",
+    "inputs":{
+      "MANIFEST_URL":"https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni",
+      "MANIFEST_BRANCH":"twrp-10.0-deprecated",
+      "DEVICE_TREE_URL":"https://github.com/MengWanYu/android_device_tree_vivoy70s",
+      "DEVICE_TREE_BRANCH":"main",
+      "DEVICE_PATH":"device/vivo/erdv9630",
+      "DEVICE_NAME":"vivo",
+      "MAKEFILE_NAME":"omni_erdv9630",
+      "BUILD_TARGET":"recovery"
+    }
+  }'
+```
+
+### 检查工作流状态命令
+
+```bash
+# 获取最新工作流
+curl -s -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/MengWanYu/Action-TWRP-Builder/actions/workflows/229163364/runs?per_page=1
+
+# 获取工作流详情
+curl -s -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/MengWanYu/Action-TWRP-Builder/actions/runs/{RUN_ID}/jobs
+```
+
+## 关键文件路径
+
+### 设备树
+- `/storage/emulated/0/AiflowWorkStation/android_device_tree_vivoy70s/BoardConfig.mk`
+- `/storage/emulated/0/AiflowWorkStation/android_device_tree_vivoy70s/recovery/root/fonts/Roboto-Regular.ttf`
+
+### 工作流
+- `/storage/emulated/0/AiflowWorkStation/Action-TWRP-Builder/.github/workflows/Recovery Build.yml`
+
+## AI部署检查清单
+
+- [ ] 读取此README文件
+- [ ] 检查工作流#24状态
+- [ ] 如果失败，分析错误日志
+- [ ] 根据错误实施对应的解决方案
+- [ ] 触发新的工作流
+- [ ] 重复直到编译成功
+- [ ] 提取recovery.img
+- [ ] 上传到GitHub Releases
+
+## 重要提醒
+
+1. **不要修改已提交的代码**，除非有明确的修复方案
+2. **每次修改都要提交到GitHub**，确保可追溯
+3. **工作流日志是关键**，失败时一定要仔细分析
+4. **字体问题是核心**，所有解决方案都围绕解决字体依赖
+5. **如果编译成功**，自动将recovery.img上传到GitHub Releases
+
+## 成功标准
+
+- ✅ TWRP编译成功完成
+- ✅ recovery.img生成
+- ✅ 自动上传到GitHub Releases
+- ✅ 可以在设备上刷入使用
+
+## 联系信息
+
+- GitHub用户：MengWanYu
+- 仓库：https://github.com/MengWanYu/android_device_tree_vivoy70s
+
+---
+
+**最后更新时间：** 2026-02-01  
+**AI记忆版本：** v1.0  
+**当前状态：** 等待工作流#24完成
