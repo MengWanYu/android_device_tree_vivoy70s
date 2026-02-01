@@ -186,7 +186,9 @@ curl -s -H "Accept: application/vnd.github+json" \
 
 
 ✅ **Fork TWRP Manifest 仓库**
-- Fork 地址: https://github.com/MengWanYu/platform_manifest_twrp_omni
+- AOSP 仓库: https://github.com/MengWanYu/platform_manifest_twrp_aosp (Android 10+)
+- Omni 仓库: https://github.com/MengWanYu/platform_manifest_twrp_omni (Android 5.1-9.0)
+- 当前使用: platform_manifest_twrp_aosp + twrp-11 (最新稳定版)
 - 用途: 控制 TWRP 源码版本，避免上游变更影响编译
 
 ✅ **整合 convert.sh 脚本**
