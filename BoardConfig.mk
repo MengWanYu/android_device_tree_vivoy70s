@@ -110,3 +110,6 @@ TW_USE_TOOLBOX := true
 
 # TWRP Font
 RECOVERY_FONT_PATH := $(DEVICE_PATH)/recovery/root/fonts/Roboto-Regular.ttf
+
+# 禁用recovery界面文本图片生成，避免字体依赖
+RECOVERY_SKIP_TEXT_IMAGE_GENERATION := true
