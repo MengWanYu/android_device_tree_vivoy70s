@@ -7,9 +7,9 @@ on:
         required: true
         default: 'https://github.com/MengWanYu/platform_manifest_twrp_omni'
       MANIFEST_BRANCH:
-        description: 'Manifest分支'
+        description: 'Manifest分支（twrp-9.0 对 Android 10 更稳定，避免字体依赖问题）'
         required: true
-        default: 'twrp-10.0-deprecated'
+        default: 'twrp-9.0'
       DEVICE_TREE_URL:
         description: '设备树仓库地址'
         required: true
