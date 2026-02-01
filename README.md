@@ -204,7 +204,7 @@ curl -s -H "Accept: application/vnd.github+json" \
 
 | 组件 | 状态 | 控制方式 |
 |------|------|----------|
-| TWRP Manifest | ✅ 已整合 | 使用 Fork 的仓库 |
+| TWRP Manifest | ✅ 已整合 | 使用 Fork 的 aosp 仓库 + twrp-11 |
 | convert.sh | ✅ 已整合 | 内置在仓库中 |
 | zopfli | ⚠️ 自动获取 | 编译时临时克隆 |
 
