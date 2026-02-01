@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       MANIFEST_URL:
-        description: 'Manifest仓库地址（若使用SSH密钥，格式为git@github.com:XXXXX）'
+        description: 'Manifest仓库地址（若使用SSH密钥，格式为git@github.com:XXXXX）【已整合到本仓库的 Fork】'
         required: true
-        default: 'https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni'
+        default: 'https://github.com/MengWanYu/platform_manifest_twrp_omni'
       MANIFEST_BRANCH:
         description: 'Manifest分支'
         required: true
@@ -333,3 +333,4 @@ jobs:
             - 编译目标: ${{ github.event.inputs.BUILD_TARGET }}.img
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
