@@ -176,3 +176,46 @@ curl -s -H "Accept: application/vnd.github+json" \
 **最后更新时间：** 2026-02-01  
 **AI记忆版本：** v1.0  
 **当前状态：** 等待工作流#24完成
+
+
+---
+
+## 仓库整合进度 (2026-02-01)
+
+### 已完成的整合工作
+
+
+✅ **Fork TWRP Manifest 仓库**
+- Fork 地址: https://github.com/MengWanYu/platform_manifest_twrp_omni
+- 用途: 控制 TWRP 源码版本，避免上游变更影响编译
+
+✅ **整合 convert.sh 脚本**
+- 原地址: https://github.com/azwhikaru/Action-TWRP-Builder/scripts/convert.sh
+- 本地路径: scripts/convert.sh
+- 用途: 转换设备依赖文件为 repo manifest 格式
+
+✅ **更新工作流文件**
+- 已将 MANIFEST_URL 默认值改为 Fork 地址
+- 文件位置: .github/workflows/Recovery Build.yml
+
+### 编译流程控制
+
+| 组件 | 状态 | 控制方式 |
+|------|------|----------|
+| TWRP Manifest | ✅ 已整合 | 使用 Fork 的仓库 |
+| convert.sh | ✅ 已整合 | 内置在仓库中 |
+| zopfli | ⚠️ 自动获取 | 编译时临时克隆 |
+
+### 优势
+
+- 100% 控制编译流程
+- 便于精细化纠错和调试
+- 避免外部依赖变更导致编译失败
+- 可追溯性更强
+
+### 下一步
+
+- 验证工作流编译是否正常
+- 提取 recovery.img 并测试
+
+---
