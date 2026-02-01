@@ -83,7 +83,7 @@ Error: Exception in thread "main" java.io.IOException: Can not find the font fil
 
 ```yaml
 MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni
-MANIFEST_BRANCH: twrp-10.0-deprecated
+MANIFEST_BRANCH: twrp-9.0
 DEVICE_TREE_URL: https://github.com/MengWanYu/android_device_tree_vivoy70s
 DEVICE_TREE_BRANCH: main
 DEVICE_PATH: device/vivo/erdv9630
