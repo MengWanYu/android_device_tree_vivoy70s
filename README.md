@@ -220,4 +220,114 @@ curl -s -H "Accept: application/vnd.github+json" \
 - 验证工作流编译是否正常
 - 提取 recovery.img 并测试
 
+------
+
+## 编译经验总结
+
+### 分支选择经验
+
+| 分支 | 适用 Android 版本 | 兼容性 | 字体问题 | 推荐度 |
+|------|-----------------|--------|---------|--------|
+| twrp-10.0-deprecated | Android 10 | 存在 | ❌ 字体依赖错误 | ⚠️ 不推荐 |
+| twrp-11 | Android 10+ | ✅ 良好 | ✅ 已修复 | ✅ 推荐 |
+| twrp-12.1 | Android 12+ | ✅ 良好 | ✅ 已修复 | ⚠️ 过新 |
+
+**经验总结**: twrp-10.0-deprecated 分支已被弃用，存在 Roboto 字体依赖问题。使用 twrp-11 分支可以完美支持 Android 10，且无字体问题。
+
+### TWRP 11+ 兼容性要求
+
+TWRP 11+ 分支使用 twrp_ 前缀的 makefile，与 OmniROM 的 omni_ 前缀不同。
+
+#### 必需文件
+
+1. **twrp_erdv9630.mk**
+   - 必须继承 vendor/twrp/config/common.mk
+   - 不能继承 vendor/omni/config/common.mk
+   - 使用 PRODUCT_NAME := twrp_erdv9630
+
+2. **AndroidProducts.mk 更新**
+   ```makefile
+   PRODUCT_MAKEFILES := \
+       $(LOCAL_DIR)/omni_erdv9630.mk \
+       $(LOCAL_DIR)/twrp_erdv9630.mk
+
+   COMMON_LUNCH_CHOICES := \
+       omni_erdv9630-user \
+       omni_erdv9630-userdebug \
+       omni_erdv9630-eng \
+       twrp_erdv9630-user \
+       twrp_erdv9630-userdebug \
+       twrp_erdv9630-eng
+   ```
+
+3. **工作流配置**
+   ```yaml
+   MANIFEST_URL: https://github.com/MengWanYu/platform_manifest_twrp_aosp
+   MANIFEST_BRANCH: twrp-11
+   MAKEFILE_NAME: twrp_erdv9630
+   ```
+
+### 常见错误与解决方案
+
+#### 错误 1: Roboto 字体缺失
+
+```
+Error: Exception in thread "main" java.io.IOException: Can not find the font file Roboto-Regular for language en
+```
+
+**原因**: twrp-10.0-deprecated 分支的文本图片生成依赖 Roboto 字体
+
+**解决方案**: 切换到 twrp-11 分支（已修复字体系统）
+
+#### 错误 2: lunch 命令找不到配置
+
+```
+Don't have a product spec for: 'omni_erdv9630-eng'
+```
+
+**原因**: twrp-11 需要 twrp_ 前缀的 makefile
+
+**解决方案**: 创建 twrp_erdv9630.mk 并更新 AndroidProducts.mk
+
+### 已 Fork 的仓库
+
+| 仓库 | 地址 | 用途 |
+|------|------|------|
+| platform_manifest_twrp_aosp | https://github.com/MengWanYu/platform_manifest_twrp_aosp | Android 10+ TWRP 源码 |
+| platform_manifest_twrp_omni | https://github.com/MengWanYu/platform_manifest_twrp_omni | Android 5.1-9.0 TWRP 源码 |
+
+### 编译指令速查
+
+```bash
+# 触发工作流
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/MengWanYu/android_device_tree_vivoy70s/actions/workflows/229304461/dispatches \
+  -d '{
+    "ref":"main",
+    "inputs":{
+      "MANIFEST_URL":"https://github.com/MengWanYu/platform_manifest_twrp_aosp",
+      "MANIFEST_BRANCH":"twrp-11",
+      "DEVICE_TREE_URL":"https://github.com/MengWanYu/android_device_tree_vivoy70s",
+      "DEVICE_TREE_BRANCH":"main",
+      "DEVICE_PATH":"device/vivo/erdv9630",
+      "DEVICE_NAME":"vivo",
+      "MAKEFILE_NAME":"twrp_erdv9630",
+      "BUILD_TARGET":"recovery"
+    }
+  }'
+```
+
+### 下次编译注意事项
+
+1. ✅ 使用 twrp-11 分支，不要使用 twrp-10.0-deprecated
+2. ✅ 确保有 twrp_erdv9630.mk 文件
+3. ✅ 确保工作流中 MAKEFILE_NAME 为 twrp_erdv9630
+4. ✅ 字体文件已放置在 recovery/root/fonts/Roboto-Regular.ttf
+5. ⚠️ 编译时间约 20-40 分钟
+
 ---
+
+**最后更新**: 2026-02-01 - 添加 TWRP 11+ 兼容性修复和编译经验总结
