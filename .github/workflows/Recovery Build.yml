@@ -33,9 +33,9 @@ on:
         required: true
         default: 'vivo'
       MAKEFILE_NAME:
-        description: 'Makefile名称（不含.mk后缀）'
+        description: 'Makefile名称（不含.mk后缀）【TWRP 11+ 使用 twrp_ 前缀】'
         required: true
-        default: 'omni_erdv9630'
+        default: 'twrp_erdv9630'
       BUILD_TARGET:
         description: '编译目标（如recovery）'
         required: true
