@@ -293,6 +293,33 @@ jobs:
         with:
           swap-size-gb: 12
 
+      - name: 修复 recovery.fstab 路径（TWRP 11+ 兼容性）
+        run: |
+          # TWRP 11+ 可能不使用 system/etc/recovery.fstab
+          # 手动创建目录并复制文件，避免编译失败
+          DEVICE_PATH="${{ github.event.inputs.DEVICE_PATH }}"
+          PRODUCT_OUT="${{ steps.pwd.outputs.workspace-folder }}/out/target/product/${{ github.event.inputs.DEVICE_NAME }}"
+          
+          # 检查 recovery.fstab 是否存在
+          if [ -f "${{ steps.pwd.outputs.workspace-folder }}/${DEVICE_PATH}/recovery.fstab" ]; then
+            echo "✅ 找到 recovery.fstab"
+            
+            # 创建可能的目录路径
+            mkdir -p "$PRODUCT_OUT/recovery/root/system/etc"
+            mkdir -p "$PRODUCT_OUT/recovery/root"
+            
+            # 复制到多个可能的位置
+            cp "${{ steps.pwd.outputs.workspace-folder }}/${DEVICE_PATH}/recovery.fstab" "$PRODUCT_OUT/recovery/root/system/etc/recovery.fstab"
+            cp "${{ steps.pwd.outputs.workspace-folder }}/${DEVICE_PATH}/recovery.fstab" "$PRODUCT_OUT/recovery/root/recovery.fstab"
+            
+            echo "✅ 已复制 recovery.fstab 到多个位置"
+            echo "  - $PRODUCT_OUT/recovery/root/system/etc/recovery.fstab"
+            echo "  - $PRODUCT_OUT/recovery/root/recovery.fstab"
+          else
+            echo "⚠️  未找到 recovery.fstab，跳过复制"
+          fi
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
       - name: 编译Recovery
         run: |
           source build/envsetup.sh  # 初始化构建环境
