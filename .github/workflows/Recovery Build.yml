@@ -396,7 +396,8 @@ jobs:
           sudo ln -sf /usr/bin/zopflipng $LINK_PATH
           echo "✅ 已创建zopflipng软链接：$LINK_PATH"
           
-          make ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)  # 开始编译
+          # 使用正确的编译命令（TWRP/OMNI 构建系统使用 make recovery 而不是 make recoveryimage）
+          make ${{ github.event.inputs.BUILD_TARGET }} -j$(nproc --all)  # 开始编译
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
       - name: 上传编译产物到Release

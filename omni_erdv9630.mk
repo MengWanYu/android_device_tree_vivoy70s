@@ -31,3 +31,15 @@ BUILD_FINGERPRINT := vivo/PD2002/PD2002:10/QP1A.190711.020/compiler09021438:user
 # Roboto 字体依赖（方案1）
 PRODUCT_PACKAGES += \
     roboto-fonts
+
+# TWRP 编译依赖（确保编译系统识别 TWRP 编译规则）
+PRODUCT_PACKAGES += \
+    twrp \
+    recovery.fstab \
+    busybox
+
+# TWRP 特性配置
+TW_THEME := portrait_hdpi
+TW_SCREEN_BLANK_ON_BOOT := true
+TW_INPUT_BLACKLIST := "hbtp_vm"
+TW_USE_TOOLBOX := true
