@@ -37,9 +37,9 @@ on:
         required: true
         default: 'twrp_erdv9630'
       BUILD_TARGET:
-        description: '编译目标（如recovery）'
+        description: '编译目标（如recoveryimage）'
         required: true
-        default: 'recovery'
+        default: 'recoveryimage'
 
 jobs:
   build:
