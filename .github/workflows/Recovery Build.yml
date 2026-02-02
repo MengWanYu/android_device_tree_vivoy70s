@@ -96,25 +96,10 @@ jobs:
           repo sync -j$(nproc --all) --force-sync
         working-directory: workspace
 
-      - name: 同步 Roboto 字体仓库（方案1）
-        run: |
-          echo "📋 同步 Roboto 字体仓库..."
-          # 尝试同步 external/roboto-fonts 仓库
-          if [ -d "external/roboto-fonts" ]; then
-            echo "✅ Roboto 字体仓库已存在"
-          else
-            echo "⚠️  Roboto 字体仓库不存在，尝试手动克隆..."
-            git clone https://github.com/googlefonts/roboto external/roboto-fonts
-          fi
-          # 复制 Roboto-Regular.ttf 到设备树
-          mkdir -p ${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/recovery/root/fonts
-          cp external/roboto-fonts/src/hinted/Roboto-Regular.ttf ${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/recovery/root/fonts/
-          echo "✅ 已复制 Roboto-Regular.ttf 到设备树"
-        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
-        continue-on-error: true
-
       - name: 克隆设备树
         run: |
+          # 删除已存在的设备树目录（避免 repo sync 创建的冲突）
+          rm -rf ./${{ github.event.inputs.DEVICE_PATH }}
           git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
@@ -334,6 +319,25 @@ jobs:
             echo "  - $PRODUCT_OUT/recovery/root/recovery.fstab"
           else
             echo "⚠️  未找到 recovery.fstab，跳过复制"
+          fi
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+
+      - name: 修复 Roboto 字体缺失问题（直接下载）
+        run: |
+          # 1. 创建字体输出目录（与编译日志中的路径完全一致）
+          mkdir -p out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/PACKAGING/recovery_font_files_intermediates
+          
+          # 2. 从 Google 官方仓库下载 Roboto-Regular.ttf 字体
+          wget -q -O out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/PACKAGING/recovery_font_files_intermediates/Roboto-Regular.ttf \
+          https://raw.githubusercontent.com/googlefonts/roboto/main/src/hinted/Roboto-Regular.ttf
+          
+          # 3. 验证字体文件是否存在
+          if [ -f "out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/PACKAGING/recovery_font_files_intermediates/Roboto-Regular.ttf" ]; then
+            echo "✅ Roboto 字体下载成功！"
+            ls -lh out/target/product/${{ github.event.inputs.DEVICE_NAME }}/obj/PACKAGING/recovery_font_files_intermediates/Roboto-Regular.ttf
+          else
+            echo "❌ 字体下载失败！"
+            exit 1
           fi
         working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
