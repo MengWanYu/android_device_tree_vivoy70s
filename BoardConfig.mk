@@ -111,5 +111,9 @@ TW_USE_TOOLBOX := true
 # TWRP Font
 RECOVERY_FONT_PATH := $(DEVICE_PATH)/recovery/root/fonts/Roboto-Regular.ttf
 
+# 引入 Roboto 字体依赖（方案1）
+TWRP_INCLUDE_RECOVERY_FONT := true
+TWRP_RECOVERY_FONT_FILES := Roboto-Regular.ttf
+
 # 禁用recovery界面文本图片生成，避免字体依赖
 RECOVERY_SKIP_TEXT_IMAGE_GENERATION := true

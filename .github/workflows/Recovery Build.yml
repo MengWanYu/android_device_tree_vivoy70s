@@ -96,6 +96,23 @@ jobs:
           repo sync -j$(nproc --all) --force-sync
         working-directory: workspace
 
+      - name: 同步 Roboto 字体仓库（方案1）
+        run: |
+          echo "📋 同步 Roboto 字体仓库..."
+          # 尝试同步 external/roboto-fonts 仓库
+          if [ -d "external/roboto-fonts" ]; then
+            echo "✅ Roboto 字体仓库已存在"
+          else
+            echo "⚠️  Roboto 字体仓库不存在，尝试手动克隆..."
+            git clone https://github.com/googlefonts/roboto external/roboto-fonts
+          fi
+          # 复制 Roboto-Regular.ttf 到设备树
+          mkdir -p ${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/recovery/root/fonts
+          cp external/roboto-fonts/src/hinted/Roboto-Regular.ttf ${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/recovery/root/fonts/
+          echo "✅ 已复制 Roboto-Regular.ttf 到设备树"
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        continue-on-error: true
+
       - name: 克隆设备树
         run: |
           git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
