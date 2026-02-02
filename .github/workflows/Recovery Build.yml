@@ -325,7 +325,41 @@ jobs:
           source build/envsetup.sh  # 初始化构建环境
           export ALLOW_MISSING_DEPENDENCIES=true  # 允许缺失非关键依赖（适配自定义设备树）
           lunch ${{ github.event.inputs.MAKEFILE_NAME }}-eng  # 选择编译目标
+          
+          # 获取输出目录
+          PRODUCT_OUT=$(get_abs_build_var PRODUCT_OUT)
+          echo "📦 输出目录: $PRODUCT_OUT"
+          
           make clean  # 清理旧编译产物
+          
+          # 关键：在编译开始前复制字体文件到正确位置
+          FONT_DIR="$PRODUCT_OUT/obj/PACKAGING/recovery_font_files_intermediates"
+          DEVICE_FONT_DIR="${{ steps.pwd.outputs.workspace-folder }}/${{ github.event.inputs.DEVICE_PATH }}/recovery/root/fonts"
+          
+          echo "📋 准备字体文件..."
+          echo "  - 字体源目录: $DEVICE_FONT_DIR"
+          echo "  - 字体目标目录: $FONT_DIR"
+          
+          # 创建字体目录
+          mkdir -p "$FONT_DIR"
+          
+          # 复制字体文件
+          if [ -f "$DEVICE_FONT_DIR/Roboto-Regular.ttf" ]; then
+            cp "$DEVICE_FONT_DIR/Roboto-Regular.ttf" "$FONT_DIR/"
+            echo "✅ 已复制 Roboto-Regular.ttf 到 $FONT_DIR"
+            
+            # 创建字体文件名变体
+            cd "$FONT_DIR"
+            cp Roboto-Regular.ttf Roboto-Regular-en.ttf
+            cp Roboto-Regular.ttf roboto-regular.ttf
+            echo "✅ 已创建字体文件名变体"
+            
+            # 验证字体文件
+            ls -lh "$FONT_DIR"
+          else
+            echo "❌ 错误: 未找到字体文件 $DEVICE_FONT_DIR/Roboto-Regular.ttf"
+            exit 1
+          fi
           
           # 关键：给构建系统创建zopflipng软链接（ninja仅识别out目录下的工具）
           LINK_PATH="${{ steps.pwd.outputs.workspace-folder }}/out/host/linux-x86/bin/zopflipng"
